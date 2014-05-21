@@ -46,7 +46,7 @@ rblGreyLists =
 
 -- tell postfix to query postgrey
 rblGreyRespond :: Text -> Maybe Text -> PolicyRequest -> IO PolicyResult
-rblGreyRespond _ _ _ = return $ Policy_RAW "check_policy_service inet:127.0.0.1:10023"
+rblGreyRespond _ _ _ = return $ Policy_RAW "check_policy_postgrey"
 
 
 -- build a text message based on request data

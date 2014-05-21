@@ -12,8 +12,26 @@ It comes with support for:
 
 # Example
 
+Add a restriction class in your postfix main.cf:
+
+    smtpd_restriction_classes = check_policy_postgrey
+    check_policy_postgrey =
+        check_policy_service inet:127.0.0.1:10023
+
+Also make it call the example (listening to 127.0.0.1:10022 by default):
+
+    smtpd_recipient_restrictions =
+        # ...
+        # "mail-policy"
+        check_policy_service inet:127.0.0.1:10022,
+        # ...
+        permit
+
+The example will redirect some blacklist hits to this restriction class.
+
     ghc -threaded -O3 -Wall example.hs
-    ./example
+    ./example &
+    postfix reload
 
 By default it will listen to 127.0.0.1:10022, but you can either modify the
 source or provide a listening socket on fd 0 (for example with spawn-fcgi).
