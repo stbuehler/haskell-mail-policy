@@ -10,6 +10,18 @@ It comes with support for:
 * making policy requests to another server
 * querying DNS blacklists
 
+# Building
+
+Distribution maintainers should already know how to build cabal packages.
+
+To install as user (requires ghc-7.6, cabal and some dependencies; `cabal
+configure` will tell you what is missing):
+
+    cabal configure --user --enable-tests
+    cabal install
+
+After updating you should also rebuild all binaries that use this library.
+
 # Example
 
 Add a restriction class in your postfix main.cf:
