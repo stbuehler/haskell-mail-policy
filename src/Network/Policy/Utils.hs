@@ -37,6 +37,7 @@ makeListeningSocket fd = do
 listenLocalhostIPv4 :: PortNumber -> IO Socket
 listenLocalhostIPv4 port = do
 	s <- socket AF_INET Stream defaultProtocol
+	setSocketOption s ReuseAddr 1
 	bind s (SockAddrInet port $ toHostAddress $ "127.0.0.1")
 	listen s maxListenQueue
 	return s
