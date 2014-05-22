@@ -18,7 +18,6 @@ rblRejectLists :: [Text]
 rblRejectLists =
 	[ "ix.dnsbl.manitu.net"
 	, "cbl.abuseat.org"
-	, "abuse.rfc-ignorant.org"
 	]
 
 -- message to reject with after a hit on rblRejectLists (similar to postfix)
