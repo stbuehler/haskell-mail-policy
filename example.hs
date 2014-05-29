@@ -21,8 +21,8 @@ rblRejectLists =
 	]
 
 -- message to reject with after a hit on rblRejectLists (similar to postfix)
-blockMessage :: Text -> Maybe Text -> PolicyRequest -> Text
-blockMessage list reason req = formatMessage req
+blockMessage :: Text -> Maybe Text -> PolicyParameters -> Text
+blockMessage list reason params = formatMessage params
 	[ "Service unavailable; Client host ["
 	, Format_Parameter "client_address"
 	, "] blocked using "
@@ -31,8 +31,8 @@ blockMessage list reason req = formatMessage req
 	]
 
 -- building the result for hit on rblRejectLists
-rblRejectRespond :: Text -> Maybe Text -> PolicyRequest -> IO PolicyResult
-rblRejectRespond list reason req = return $ Policy_Reject $ blockMessage list reason req
+rblRejectRespond :: Text -> Maybe Text -> PolicyParameters -> IO PolicyAction
+rblRejectRespond list reason params = return $ Policy_Reject $ blockMessage list reason params
 
 -- if client is listed on any of those forward them to postgrey
 rblGreyLists :: [Text]
@@ -44,7 +44,7 @@ rblGreyLists =
 	]
 
 -- tell postfix to query postgrey
-rblGreyRespond :: Text -> Maybe Text -> PolicyRequest -> IO PolicyResult
+rblGreyRespond :: Text -> Maybe Text -> PolicyParameters -> IO PolicyAction
 rblGreyRespond _ _ _ = return $ Policy_RAW "check_policy_postgrey"
 
 
@@ -59,28 +59,27 @@ data Format
 instance IsString Format where
 	fromString = Format_String . fromString
 
-formatMessage :: PolicyRequest -> [Format] -> Text
-formatMessage req = T.concat . Prelude.map fmt
+formatMessage :: PolicyParameters -> [Format] -> Text
+formatMessage params = T.concat . Prelude.map fmt
 	where
-	params = policyRequestData req
 	fmt :: Format -> Text
 	fmt (Format_String t) = t
 	fmt (Format_Parameter p) = case M.lookup p params of
 		Just t -> t
 		Nothing -> ""
 	fmt (Format_Conditional p y n) = case M.lookup p params of
-		Just t -> formatMessage req $ if T.null t then n else y
-		Nothing -> formatMessage req n
+		Just t -> formatMessage params $ if T.null t then n else y
+		Nothing -> formatMessage params n
 
 
 -- return first result that is not Policy_Pass, otherwise Policy_Pass
-handleMany :: [PolicyRequest -> IO PolicyResult] -> PolicyRequest -> IO PolicyResult
-handleMany l req = go l
+handleMany :: [PolicyParameters -> IO PolicyAction] -> PolicyParameters -> IO PolicyAction
+handleMany l params = go l
 	where
 	go [] = return Policy_Pass
-	go [x] = x req
+	go [x] = x params
 	go (x:xs) = do
-		res <- x req
+		res <- x params
 		case res of
 			Policy_Pass -> go xs
 			_ -> return res
@@ -88,24 +87,22 @@ handleMany l req = go l
 -- search for first hit and reason in `lists`, print "WARNING" on hits with details
 -- on hit call handler `h` with list name and reason to determine result,
 -- otherwise return Policy_Pass
-handleRBL :: [Text] -> Logger -> ResolvSeed -> (Text -> Maybe Text -> PolicyRequest -> IO PolicyResult) -> PolicyRequest -> IO PolicyResult
-handleRBL lists l rs h req = do
-	let d = policyRequestData req
-	case M.lookup "client_address" d of
+handleRBL :: [Text] -> Logger -> ResolvSeed -> (Text -> Maybe Text -> PolicyParameters -> IO PolicyAction) -> PolicyParameters -> IO PolicyAction
+handleRBL lists l rs h params = do
+	case M.lookup "client_address" params of
 		Just addr -> do
-			rbl <- rblLookupSimple lists rs addr
+			rbl <- rblLookupFirst lists rs addr
 			case rbl of
-				first:_ -> do -- at least one hit
-					reason <- rblLookupReason first rs addr
-					logL l WARNING $ T.unpack $ formatMessage req
+				Just (list, _, reason) -> do
+					logL l WARNING $ T.unpack $ formatMessage params
 						[ "client ["
 						, Format_Parameter "client_address"
 						, "] listed on "
-						, Format_String first
+						, Format_String list
 						, Format_String $ case reason of Nothing -> ""; Just reason' -> T.append "; " reason'
 						]
-					h first reason req
-				_ -> return Policy_Pass -- no hit
+					h list reason params
+				Nothing -> return Policy_Pass -- no hit
 		Nothing -> return Policy_Pass -- request didn't contain client_address
 
 
@@ -130,12 +127,12 @@ main = do
 	where
 	go rs l s = acceptLoopFork s $ \c _ -> handleServerConnection l handleRequest c
 		where
-		handleRequest :: PolicyRequest -> IO PolicyResult
-		handleRequest req = do
-			r <- handleMany [handleRblReject, handleRblGreylist] req
-			logL l NOTICE $ T.unpack (formatMessage req [ "client [", Format_Parameter "client_address", "]: "]) ++ show r
+		handleRequest :: PolicyParameters -> IO PolicyAction
+		handleRequest params = do
+			r <- handleMany [handleRblReject, handleRblGreylist] params
+			logL l NOTICE $ T.unpack (formatMessage params [ "client [", Format_Parameter "client_address", "]: "]) ++ show r
 			return r
-		handleRblReject :: PolicyRequest -> IO PolicyResult
+		handleRblReject :: PolicyParameters -> IO PolicyAction
 		handleRblReject = handleRBL rblRejectLists l rs rblRejectRespond
-		handleRblGreylist :: PolicyRequest -> IO PolicyResult
+		handleRblGreylist :: PolicyParameters -> IO PolicyAction
 		handleRblGreylist = handleRBL rblGreyLists l rs rblGreyRespond

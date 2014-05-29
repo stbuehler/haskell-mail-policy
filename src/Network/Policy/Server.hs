@@ -1,11 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Network.Policy.Server
+-- Copyright   :  (c) 2014 Stefan Bühler
+-- License     :  MIT-style (see the file COPYING)
+--
+-- Maintainer  :  stbuehler@web.de
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Server implementation to handle policy requests with a custom handler.
+--
+-----------------------------------------------------------------------------
+
 module Network.Policy.Server
 	( handleServerConnection
 	) where
 
 import Network.Policy.Types
-import Network.Policy.Parser
+import Network.Policy.Serialize
 
 import Control.Exception
 import Control.Monad.State
@@ -14,8 +28,11 @@ import Network.Socket.ByteString
 import qualified Data.Attoparsec as A
 import qualified Data.ByteString as B
 import System.Log.Logger
-import Data.Text.Encoding (encodeUtf8)
 
+{-|
+Handle request on a connection with the given handler, logging errors to the
+given logger.
+-}
 handleServerConnection :: Logger -> PolicyHandler -> Socket -> IO ()
 handleServerConnection logger handler sock = wrap $ evalStateT waitForData B.empty
 	where
@@ -25,36 +42,33 @@ handleServerConnection logger handler sock = wrap $ evalStateT waitForData B.emp
 		if B.null d
 			then do
 				d' <- readInput
+				put d'
 				if B.null d'
 					then return ()
 					else readRequest
 			else readRequest
 
 	readInput :: StateT B.ByteString IO B.ByteString
-	readInput = do
-		d <- lift $ recv sock 4096
-		modify (\old -> if B.null old then d else B.append old d)
-		return d
+	readInput = lift $ recv sock 4096
 
 	readRequest :: StateT B.ByteString IO ()
 	readRequest = do
 		d <- get
-		result <- A.parseWith readInput parseRequest d
+		put B.empty
+		result <- A.parseWith readInput parsePolicyParameters d
 		case result of
 			A.Done remainder res -> do
-				total <- get
-				let raw = B.take (B.length total - B.length remainder) total
 				put remainder
-				lift $ handleRequest $ PolicyRequest raw res
+				lift $ handleRequest res
 				waitForData
 			A.Fail _ _ msg -> error $ "Couldn't parse request: " ++ msg
 			A.Partial _ -> lift $ logL logger NOTICE ("Unexpected connection close")
 
-	handleRequest :: PolicyRequest -> IO ()
+	handleRequest :: PolicyParameters -> IO ()
 	handleRequest req = do
 		res <- handler req
-		msg <- policyResultMessage res
-		sendAll sock $ encodeUtf8 msg
+		msg <- formatPolicyAction res
+		sendAll sock msg
 
 	wrap :: IO () -> IO ()
 	wrap act = finally (catch act handleErrorCall) (close sock)

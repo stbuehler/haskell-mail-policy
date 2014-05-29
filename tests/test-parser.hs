@@ -3,21 +3,22 @@
 import Control.Monad (when)
 import qualified Data.Text as T
 import Network.Policy
+import Network.Policy.Serialize
 import qualified Data.Attoparsec as A
 import Data.Text.Encoding (encodeUtf8)
 
-test_response_parser :: T.Text -> PolicyResult -> IO ()
+test_response_parser :: T.Text -> PolicyAction -> IO ()
 test_response_parser s r = do
-	case A.parseOnly parseResponse $ encodeUtf8 s of
-		Left msg -> fail $ "parsing " ++ show s ++ ": " ++ msg
+	case A.parseOnly parsePolicyAction $ encodeUtf8 s of
+		Left errmsg -> fail $ "parsing " ++ show s ++ ": " ++ errmsg
 		Right r' -> when (r /= r') $ fail $ "parsing " ++ show s ++ " => '" ++ show r' ++ "', expected '" ++ show r ++ "'"
-	msg <- policyResultMessage r
-	case A.parseOnly parseResponse $ encodeUtf8 msg of
-		Left msg -> fail $ "parsing " ++ show msg ++ ": " ++ msg
+	msg <- formatPolicyAction r
+	case A.parseOnly parsePolicyAction msg of
+		Left errmsg -> fail $ "parsing " ++ show msg ++ ": " ++ errmsg
 		Right r' -> when (r /= r') $ fail $ "serialized '" ++ show r ++ "' => " ++ show msg ++ " and parsed again => '" ++ show r' ++ "'"
 
 
-test_responses :: [(T.Text, PolicyResult)]
+test_responses :: [(T.Text, PolicyAction)]
 test_responses =
 	[ ("action=OK\n\n", Policy_Accept)
 	, ("action=DUNNO\n\n", Policy_Pass)
@@ -41,18 +42,16 @@ test_responses =
 
 -- import Network.Socket
 -- import Control.Concurrent (forkIO)
--- 
+--
 -- main :: IO ()
 -- main = do
 -- 		(s1, s2) <- socketPair AF_UNIX Stream defaultProtocol
--- 		syslog_handler <- openlog "SyslogStuff" [PID] USER DEBUG
--- 		updateGlobalLogger rootLoggerName (addHandler syslog_handler)
 -- 		l <- getRootLogger
 -- 		_ <- forkIO $ handleServerConnection l handle s1
 -- 		r <- makeRequest' s2 $ M.fromList [("test", "abc")]
 -- 		print r
 -- 	where
--- 	handle :: PolicyRequest -> IO PolicyResult
+-- 	handle :: PolicyParameters -> IO PolicyAction
 -- 	handle _ = return $ Policy_RAW "550 test"
 
 main = do

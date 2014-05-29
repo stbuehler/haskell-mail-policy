@@ -1,11 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Network.Policy.Client
+-- Copyright   :  (c) 2014 Stefan Bühler
+-- License     :  MIT-style (see the file COPYING)
+--
+-- Maintainer  :  stbuehler@web.de
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Client implementation for policy requests.
+--
+-----------------------------------------------------------------------------
+
 module Network.Policy.Client
 	( makeRequest
 	, makeRequest'
 	) where
 
-import Network.Policy.Parser
+import Network.Policy.Serialize
 import Network.Policy.Types
 import Network.Policy.Utils
 
@@ -14,23 +28,26 @@ import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
 import qualified Data.Attoparsec as A
 import qualified Data.ByteString as B
-import qualified Data.Map.Strict as M
-import Data.Text.Encoding (encodeUtf8)
 
-
-formatData :: PolicyRequestData -> IO (B.ByteString)
-formatData d = return $ B.concat $ concat (map (\(k, v) -> [encodeUtf8 k, B.pack [61], encodeUtf8 v, B.pack[10] ]) $ M.toList d) ++ [B.pack [10]]
-
-makeRequest :: SockAddr -> PolicyRequestData -> IO (PolicyResult)
-makeRequest addr d = do
+{-|
+Make a request to a given 'SockAddr' (creating a TCP/Unix connection to it).
+-}
+makeRequest :: SockAddr -> PolicyParameters -> IO PolicyAction
+makeRequest addr params = do
 	s <- socket (sockAddrFamily addr) Stream defaultProtocol
-	finally (makeRequest' s d) (close s)
+	finally (makeRequest' s params) (close s)
 
-makeRequest' :: Socket -> PolicyRequestData -> IO (PolicyResult)
-makeRequest' sock d = do
-	raw <- formatData d
+{-|
+Sends a request on an already established socket and returns the response;
+doesn't close the socket. Don't pipeline requests, the parser fails if it
+receives data for more than one result (and breaks the second response too by
+throwing away the data).
+-}
+makeRequest' :: Socket -> PolicyParameters -> IO PolicyAction
+makeRequest' sock params = do
+	raw <- formatPolicyParameters params
 	sendAll sock raw
-	result <- (recv sock 4096) >>= A.parseWith (recv sock 4096) parseResponse
+	result <- (recv sock 4096) >>= A.parseWith (recv sock 4096) parsePolicyAction
 	case result of
 		A.Done remainder res -> do
 			if not (B.null remainder)
