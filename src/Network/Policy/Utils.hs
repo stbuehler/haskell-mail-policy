@@ -10,7 +10,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Network related utility functions.
+-- Network and Monad related utility functions.
 --
 -----------------------------------------------------------------------------
 
@@ -22,6 +22,7 @@ module Network.Policy.Utils
 	, setSocketNonBlocking'
 	, acceptLoop
 	, acceptLoopFork
+	, foldWhileLeftM
 	) where
 
 import Control.Concurrent (forkIO)
@@ -99,3 +100,13 @@ acceptLoopFork :: Socket -> (Socket -> SockAddr -> IO ()) -> IO ()
 acceptLoopFork serv handle = acceptLoop serv $ \c a -> do
 	_ <- forkIO $ handle c a
 	return ()
+
+{-|
+Fold result of actions until the fold returns a Right instead of a Left (not
+running the remaining actions) or all actions were run.
+-}
+foldWhileLeftM :: Monad m => (a -> b -> m (Either a a)) -> a -> [m b] -> m a
+foldWhileLeftM _ acc [] = return acc
+foldWhileLeftM f acc (x:xs) = x >>= f acc >>= \t -> case t of
+	Left acc' -> foldWhileLeftM f acc' xs
+	Right result -> return result

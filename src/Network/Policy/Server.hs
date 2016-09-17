@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RankNTypes #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -18,7 +18,7 @@ module Network.Policy.Server
 	( handleServerConnection
 	) where
 
-import Network.Policy.Types
+import Network.Policy.Handler
 import Network.Policy.Serialize
 
 import Control.Exception
@@ -66,7 +66,7 @@ handleServerConnection logger handler sock = wrap $ evalStateT waitForData B.emp
 
 	handleRequest :: PolicyParameters -> IO ()
 	handleRequest req = do
-		res <- handler req
+		res <- evalPolicyHandler handler req
 		msg <- formatPolicyAction res
 		sendAll sock msg
 

@@ -19,8 +19,8 @@ module Network.Policy.Client
 	, makeRequest'
 	) where
 
+import Network.Policy.Handler
 import Network.Policy.Serialize
-import Network.Policy.Types
 import Network.Policy.Utils
 
 import Control.Exception

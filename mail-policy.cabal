@@ -29,9 +29,9 @@ library
                        Network.Policy.Utils
                        Network.Policy.Action
                        Network.Policy.Client
+                       Network.Policy.Handler
                        Network.Policy.Serialize
                        Network.Policy.Server
-                       Network.Policy.Types
   other-modules:
   build-depends:       base ==4.6.*, network, bytestring, text, containers,
                        hslogger ==1.2.*, attoparsec, mtl, utf8-string, dns,
@@ -53,5 +53,5 @@ executable mail-policy-example
   }
   main-is:             example.hs
   build-depends:       base ==4.6.*, mail-policy, network, text, containers,
-                       hslogger ==1.2.*, dns
+                       hslogger ==1.2.*, dns, mtl
   ghc-options:         -threaded -Wall -optc-O3

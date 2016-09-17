@@ -21,7 +21,7 @@ module Network.Policy.Serialize
 	, formatPolicyAction
 	) where
 
-import Network.Policy.Types
+import Network.Policy.Handler
 import Control.Applicative
 import Control.Monad (when)
 import Data.Attoparsec.ByteString.Char8 (stringCI, space, decimal)
