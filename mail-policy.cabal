@@ -33,17 +33,18 @@ library
                        Network.Policy.Server
                        Network.Policy.Types
   other-modules:
-  build-depends:       base ==4.6.*, network, bytestring, text, containers,
+  build-depends:       base ==4.9.*, network, bytestring, text, containers,
                        hslogger ==1.2.*, attoparsec, mtl, utf8-string, dns,
                        iproute, async, unix
-  ghc-options:         -Wall -optc-O3
+  ghc-options:         -Wall -Wno-tabs -optc-O3
   hs-source-dirs:      src
 
 test-suite test-parser
   type:                exitcode-stdio-1.0
   main-is:             test-parser.hs
-  build-depends:       base ==4.6.*, mail-policy, attoparsec, QuickCheck, text
+  build-depends:       base ==4.9.*, mail-policy, attoparsec, QuickCheck, text
   hs-source-dirs:      tests
+  ghc-options:         -Wall -Wno-tabs -optc-O3
 
 executable mail-policy-example
   if flag(example) {
@@ -52,6 +53,6 @@ executable mail-policy-example
     buildable:           False
   }
   main-is:             example.hs
-  build-depends:       base ==4.6.*, mail-policy, network, text, containers,
+  build-depends:       base ==4.9.*, mail-policy, network, text, containers,
                        hslogger ==1.2.*, dns
-  ghc-options:         -threaded -Wall -optc-O3
+  ghc-options:         -threaded -Wall -Wno-tabs -optc-O3

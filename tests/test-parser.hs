@@ -4,7 +4,7 @@ import Control.Monad (when)
 import qualified Data.Text as T
 import Network.Policy
 import Network.Policy.Serialize
-import qualified Data.Attoparsec as A
+import qualified Data.Attoparsec.ByteString as A
 import Data.Text.Encoding (encodeUtf8)
 
 test_response_parser :: T.Text -> PolicyAction -> IO ()
@@ -54,5 +54,6 @@ test_responses =
 -- 	handle :: PolicyParameters -> IO PolicyAction
 -- 	handle _ = return $ Policy_RAW "550 test"
 
+main :: IO ()
 main = do
 	mapM_ (uncurry test_response_parser) test_responses

@@ -27,7 +27,7 @@ import Control.Monad (when)
 import Data.Attoparsec.ByteString.Char8 (stringCI, space, decimal)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Word (Word8)
-import qualified Data.Attoparsec as A
+import qualified Data.Attoparsec.ByteString as A
 import qualified Data.ByteString as B
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T

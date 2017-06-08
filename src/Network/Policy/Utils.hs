@@ -50,6 +50,7 @@ sockAddrFamily :: SockAddr -> Family
 sockAddrFamily (SockAddrInet _ _) = AF_INET
 sockAddrFamily (SockAddrInet6 _ _ _ _) = AF_INET6
 sockAddrFamily (SockAddrUnix _) = AF_UNIX
+sockAddrFamily (SockAddrCan _) = AF_CAN
 
 {-|
 Create a listening socket from a file descriptor (fails if file descriptor

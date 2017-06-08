@@ -25,7 +25,7 @@ import Control.Exception
 import Control.Monad.State
 import Network.Socket hiding (send, sendTo, recv, recvFrom)
 import Network.Socket.ByteString
-import qualified Data.Attoparsec as A
+import qualified Data.Attoparsec.ByteString as A
 import qualified Data.ByteString as B
 import System.Log.Logger
 
